@@ -1,33 +1,48 @@
-# Node.js Web Application with CLI
+# Double-Blind Email Project
 
-A simple web application with a local server and command-line interface for testing.
-
-## Setup
-
-1. Install dependencies:
-```bash
-npm install
-```
-
-2. Start the server:
-```bash
-node src/server.js
-```
-
-3. Use the CLI:
-```bash
-node src/cli.js -f <filename> -m <message>
-```
+A web application with a server component and command-line client.
 
 ## Project Structure
 
-- `src/server.js` - Express.js server implementation
-- `src/cli.js` - Command-line interface
-- `src/routes/` - Server route handlers
-- `src/utils/` - Utility functions
+- `server/` - Server component
+  - `src/server.js` - Express.js server implementation
+  - `package.json` - Server dependencies and scripts
+
+- `client/` - Command-line client
+  - `src/cli.js` - CLI implementation
+  - `package.json` - Client dependencies and scripts
+
+## Setup
+
+1. Install server dependencies:
+```bash
+cd server
+npm install
+```
+
+2. Install client dependencies:
+```bash
+cd client
+npm install
+```
+
+## Running the Application
+
+1. Start the server:
+```bash
+cd server
+npm start
+```
+
+2. Use the client (in a separate terminal):
+```bash
+cd client
+npm start -- -f <filename> -m <message>
+```
 
 ## CLI Usage
 
-The CLI supports the following options:
+The client supports the following options:
 - `-f, --file <filename>` - Specify a filename
-- `-m, --message <message>` - Specify a message string 
+- `-m, --message <message>` - Specify a message string
+- `-s, --server <url>` - Specify server URL (default: http://localhost:3000) 

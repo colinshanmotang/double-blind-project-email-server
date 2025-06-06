@@ -1,0 +1,12 @@
+{
+  "name": "double-blind-project-email-server",
+  "version": "1.0.0",
+  "description": "Server component of the double-blind email project",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  }
+} 
