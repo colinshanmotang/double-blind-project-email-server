@@ -11,6 +11,19 @@ A web application with a server component and command-line client.
 - `client/` - Command-line client
   - `src/cli.js` - CLI implementation
   - `package.json` - Client dependencies and scripts
+  - Uses snarkjs for zero-knowledge proof generation
+
+## Dependencies
+
+### Server Dependencies
+- Express.js for the web server
+- Other dependencies listed in server/package.json
+
+### Client Dependencies
+- Commander.js for CLI argument parsing
+- Axios for HTTP requests
+- Snarkjs for zero-knowledge proof generation
+- Other dependencies listed in client/package.json
 
 ## Setup
 
