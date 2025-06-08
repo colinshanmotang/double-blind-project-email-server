@@ -94,14 +94,15 @@ async function generateSignature(message, keyFile) {
 }
 
 // Send request to server
-async function sendRequest() {
+async function sendRequest(options, proofResults) {
     try {
 
         
-        const response = await axios.post('http://localhost:3000/test', {
-            filename: options.file,
+        const response = await axios.post('http://localhost:3000/sendMessage', {
             message: options.message,
-            signature: signature
+            groupMembers: options.groupMembers,
+            proof: proofResults.proof,
+            publicInputs: proofResults.publicInputs
         });
         console.log('Server response:', response.data);
     } catch (error) {
@@ -178,6 +179,7 @@ async function main(options) {
     console.log("Proof results:", proofResults);
     const tempFile = 'temp_proof.json';
     writeFileSync(tempFile, JSON.stringify(proofResults));
+    sendRequest(options, proofResults);
 }
 
 

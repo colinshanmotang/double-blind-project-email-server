@@ -11,13 +11,19 @@ app.get('/health', (req, res) => {
 });
 
 // Basic test endpoint
-app.post('/test', (req, res) => {
-    const { filename, message } = req.body;
-    console.log(`Received request - File: ${filename}, Message: ${message}`);
+app.post('/sendMessage', (req, res) => {
+    const { groupMembers, message, proof, publicInputs } = req.body;
+    console.log(`Received request - Group members: ${groupMembers}, Message: ${message}`);
+    console.log('Proof:');
+    console.log(proof);
+    console.log('Public inputs:');
+    console.log(publicInputs);
     res.json({ 
         received: true,
-        filename,
-        message
+        groupMembers,
+        message,
+        proof,
+        publicInputs
     });
 });
 
