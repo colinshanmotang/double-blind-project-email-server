@@ -4,6 +4,10 @@ import { spawn } from 'child_process';
 import { writeFileSync, unlinkSync, readFileSync } from 'fs';
 import * as snarkjs from 'snarkjs';
 import * as SignatureProcessing from '../lib/signature-processing.js';
+import { createInterface } from 'readline/promises';
+
+
+
 
 const BITS_PER_REGISTER = 121n;
 const REGISTERS_PER_INT = 34;
@@ -69,8 +73,7 @@ async function generateSignature(message, keyFile) {
                     // Read the signature file
                     const signatureFile = `${tempFile}.sig`;
                     const signature = readFileSync(signatureFile, 'utf8');
-                    console.log("Signature:");
-                    console.log(signature);
+
                     // Clean up signature file
                     unlinkSync(signatureFile);
 
@@ -98,7 +101,7 @@ async function sendRequest(options, proofResults) {
     try {
 
         
-        const response = await axios.post('http://localhost:3000/sendMessage', {
+        const response = await axios.post('http://localhost:3000/cli/send', {
             message: options.message,
             groupMembers: options.groupMembers,
             proof: proofResults.proof,
@@ -124,7 +127,7 @@ async function generateProof(message, groupMembersPublicKeys, signature) {
     let publicKeyRegisters = publicKeyInfo.map(info => bigint_to_registers(BITS_PER_REGISTER,REGISTERS_PER_INT,info.modulusBigInt));
     
     const zeroRegister = Array(REGISTERS_PER_INT).fill("0");
-    for (let i = publicKeyRegisters.length; i < 10; i++){
+    for (let i = publicKeyRegisters.length; i < 1000; i++){
         publicKeyRegisters.push(zeroRegister);
     }
 
@@ -136,9 +139,16 @@ async function generateProof(message, groupMembersPublicKeys, signature) {
     }
 
     //console.log("Input JSON:", inputJson);
-    const {proof, publicSignals} = await snarkjs.groth16.fullProve(inputJson, "public/rsa-test.wasm", "public/rsa-test_0001.zkey");
-    console.log("Public inputs:", publicSignals);
-    return {proof: proof, publicInputs: publicSignals};
+
+    try {
+        const {proof, publicSignals} = await snarkjs.groth16.fullProve(inputJson, "public/rsa.wasm", "public/rsa_0001.zkey");
+        return {proof: proof, publicInputs: publicSignals};
+    } catch (error) {
+        console.error('Error during proof generation. Did you include yourself in list of group members?');
+        console.error(error.message);
+        process.exit(1);
+    }
+
 }
 
 
@@ -162,8 +172,20 @@ async function main(options) {
     const publicKeys = readPublicKeys();
     //console.log("Public keys:", publicKeys);
 
-    const groupMembers = options.groupMembers.split(',');
-    const groupMembersPublicKeys = groupMembers.map(member => publicKeys.get(member));
+
+    // IMPORTANT sort the group members to ensure that the ordering
+    // doesn't reveal any information
+    const groupMembers = options.groupMembers.split(',').sort();
+    const groupMembersPublicKeys = groupMembers.map(member => {
+        
+        const result = publicKeys.get(member);
+        if (result === undefined) {
+            console.error(`Error: Public key for ${member} not found`);
+            process.exit(1);
+        }
+        return result;
+
+    });
 
 
     let signature;
@@ -175,11 +197,45 @@ async function main(options) {
         process.exit(1);
     }
 
+    const rl = createInterface({
+        input: process.stdin,
+        output: process.stdout
+    });
+    console.log("About to send the following message:");
+    console.log("--------------------------------");
+    console.log("FROM: ", options.groupMembers);
+    console.log(options.message);
+    console.log("--------------------------------");
+    console.log("ATTENTION: Please verify that the message and the senders are correct.");
+
+    const input = await rl.question('Continue? (y/n) ');
+    rl.close();
+    if (input !== "y" && input !== "Y") {
+        console.log("Aborting...");
+        process.exit(0);
+    }
+    console.log("Generating proof... (this may take a while)");
+    
+
+
+
     const proofResults = await generateProof(options.message, groupMembersPublicKeys, signature);
-    console.log("Proof results:", proofResults);
+    //console.log("Proof results:", proofResults);
+    console.log("Proof generated successfully.");
     const tempFile = 'temp_proof.json';
-    writeFileSync(tempFile, JSON.stringify(proofResults));
-    sendRequest(options, proofResults);
+    try {
+        writeFileSync(tempFile, JSON.stringify(proofResults));
+        await sendRequest(options, proofResults);
+    } finally {
+        // Clean up temporary file
+        try {
+            unlinkSync(tempFile);
+            process.exit(0);
+        } catch (error) {
+            console.error('Warning: Failed to clean up temporary file:', error.message);
+            process.exit(1);
+        }
+    }
 }
 
 
