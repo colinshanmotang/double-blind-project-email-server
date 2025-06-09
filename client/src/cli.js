@@ -101,7 +101,7 @@ async function sendRequest(options, proofResults) {
     try {
 
         
-        const response = await axios.post('http://localhost:3000/sendMessage', {
+        const response = await axios.post('http://localhost:3000/cli/send', {
             message: options.message,
             groupMembers: options.groupMembers,
             proof: proofResults.proof,
@@ -127,7 +127,7 @@ async function generateProof(message, groupMembersPublicKeys, signature) {
     let publicKeyRegisters = publicKeyInfo.map(info => bigint_to_registers(BITS_PER_REGISTER,REGISTERS_PER_INT,info.modulusBigInt));
     
     const zeroRegister = Array(REGISTERS_PER_INT).fill("0");
-    for (let i = publicKeyRegisters.length; i < 10; i++){
+    for (let i = publicKeyRegisters.length; i < 1000; i++){
         publicKeyRegisters.push(zeroRegister);
     }
 
@@ -139,14 +139,16 @@ async function generateProof(message, groupMembersPublicKeys, signature) {
     }
 
     //console.log("Input JSON:", inputJson);
+
     try {
-        const {proof, publicSignals} = await snarkjs.groth16.fullProve(inputJson, "public/rsa-test.wasm", "public/rsa-test_0001.zkey");
+        const {proof, publicSignals} = await snarkjs.groth16.fullProve(inputJson, "public/rsa.wasm", "public/rsa_0001.zkey");
         return {proof: proof, publicInputs: publicSignals};
     } catch (error) {
         console.error('Error during proof generation. Did you include yourself in list of group members?');
         console.error(error.message);
         process.exit(1);
     }
+
 }
 
 
@@ -170,6 +172,7 @@ async function main(options) {
     const publicKeys = readPublicKeys();
     //console.log("Public keys:", publicKeys);
 
+
     // IMPORTANT sort the group members to ensure that the ordering
     // doesn't reveal any information
     const groupMembers = options.groupMembers.split(',').sort();
@@ -181,6 +184,7 @@ async function main(options) {
             process.exit(1);
         }
         return result;
+
     });
 
 
