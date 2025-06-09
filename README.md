@@ -62,7 +62,7 @@ The client supports the following options:
 
 ## Required files
 
-You will need to download the file `client/public/rsa_0001.zkey` since it is 700 MB and thus too large for github.
+You will need to download the file `client/public/rsa_0001.zkey` from [here](https://drive.google.com/file/d/1TLXSpmupKv_3dLAzZM2kYWmi7ZeRq5w8/view?usp=sharing) since it is 700 MB and thus too large for github.
 
 Then you can just run the CLI client using the instructions above.
 
