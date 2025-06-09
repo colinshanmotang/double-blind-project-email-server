@@ -98,7 +98,7 @@ async function sendRequest(options, proofResults) {
     try {
 
         
-        const response = await axios.post('http://localhost:3000/sendMessage', {
+        const response = await axios.post('http://localhost:3000/cli/send', {
             message: options.message,
             groupMembers: options.groupMembers,
             proof: proofResults.proof,
@@ -124,7 +124,7 @@ async function generateProof(message, groupMembersPublicKeys, signature) {
     let publicKeyRegisters = publicKeyInfo.map(info => bigint_to_registers(BITS_PER_REGISTER,REGISTERS_PER_INT,info.modulusBigInt));
     
     const zeroRegister = Array(REGISTERS_PER_INT).fill("0");
-    for (let i = publicKeyRegisters.length; i < 10; i++){
+    for (let i = publicKeyRegisters.length; i < 1000; i++){
         publicKeyRegisters.push(zeroRegister);
     }
 
@@ -136,8 +136,9 @@ async function generateProof(message, groupMembersPublicKeys, signature) {
     }
 
     //console.log("Input JSON:", inputJson);
-    const {proof, publicSignals} = await snarkjs.groth16.fullProve(inputJson, "public/rsa-test.wasm", "public/rsa-test_0001.zkey");
-    console.log("Public inputs:", publicSignals);
+    const {proof, publicSignals} = await snarkjs.groth16.fullProve(inputJson, "public/rsa.wasm", "public/rsa_0001.zkey");
+    //console.log("Public inputs:", publicSignals);
+    console.log(proof);
     return {proof: proof, publicInputs: publicSignals};
 }
 
@@ -163,7 +164,14 @@ async function main(options) {
     //console.log("Public keys:", publicKeys);
 
     const groupMembers = options.groupMembers.split(',');
-    const groupMembersPublicKeys = groupMembers.map(member => publicKeys.get(member));
+    const groupMembersPublicKeys = groupMembers.map(member => {
+        const publicKey = publicKeys.get(member);
+        if (!publicKey) {
+            console.error(`Error: Public key not found for group member: ${member}`);
+            process.exit(1);
+        }
+        return publicKey;
+    });
 
 
     let signature;

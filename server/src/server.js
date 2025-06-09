@@ -1,11 +1,18 @@
-const { google } = require('googleapis');
-const fs = require('fs').promises;
-const path = require('path');
-const express = require('express');
-const nodemailer = require('nodemailer');
+//const { google } = require('googleapis');
+import { google } from 'googleapis';
+import fs from 'fs';
+//const path = require('path');
+import path from 'path';
+import express from 'express';
+
+//const nodemailer = require('nodemailer');
+import * as snarkjs from 'snarkjs';
+import * as SignatureProcessing from '../signature-processing.js';
 
 const app = express();
-app.use(express.json()); // Add JSON parsing middleware
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+
 
 // Configuration
 const CREDENTIALS_PATH = path.join(process.cwd(), 'credentials.json');
@@ -23,7 +30,7 @@ let oauth2Client;
  */
 async function loadCredentials() {
     try {
-        const content = await fs.readFile(CREDENTIALS_PATH);
+        const content = await fs.promises.readFile(CREDENTIALS_PATH);
         const credentials = JSON.parse(content);
         return credentials;
     } catch (error) {
@@ -52,7 +59,7 @@ async function createOAuth2Client() {
  */
 async function loadSavedToken() {
     try {
-        const token = await fs.readFile(TOKEN_PATH);
+        const token = await fs.promises.readFile(TOKEN_PATH);
         oauth2Client.setCredentials(JSON.parse(token));
         return true;
     } catch (error) {
@@ -486,33 +493,100 @@ async function createOAuth2ClientWithCreds(credentials) {
     return tempOAuth2Client;
 }
 
+function bigint_to_registers(n, k, bi) {
+    //k registers, of size n each
+    //little-endian
+    let result = [];
+    let bi_temp = bi;
+    for(let i =0; i < k; i++){
+        result.push((bi_temp % (1n << n)).toString());
+        bi_temp = bi_temp / (1n << n);
+    }
+    return result;
+}
+
+
+
+async function readPublicKeys() {
+    const publicKeyText = await fs.promises.readFile('public-key-directory.txt', 'utf8');
+    const keyTextList = publicKeyText.split('\n');
+    const publicKeys = new Map();
+    for (const keyText of keyTextList) {
+        const [username, ...keyParts] = keyText.trim().split(' ');
+        if (username === '') {
+            continue;
+        }
+        const key = keyParts.join(' ');
+        publicKeys.set(username, key);
+    }
+    return publicKeys;
+}
+
 /**
  * Placeholder test function - replace with your custom logic
  * @param {object} cliArgs - All CLI arguments from request body
  * @returns {object} - {passed: boolean, reason?: string, details?: object}
  */
-function shouldSendEmail(cliArgs) {
+async function shouldSendEmail(cliArgs) {
     // Example implementation: check message length > 37 bytes
     // Replace this function with your custom test logic
-    
-    const { message } = cliArgs;
-    const messageBytes = Buffer.byteLength(message, 'utf8');
-    
-    if (messageBytes <= 37) {
-        return {
-            passed: false,
-            reason: 'Message not sent - must be longer than 37 bytes',
-            details: {
-                messageLength: messageBytes,
-                requiredLength: 38
-            }
-        };
+    const {message, groupMembers, proof, publicInputs} = cliArgs; 
+    const publicKeys = await readPublicKeys();
+    //console.log("Public keys:", publicKeys);
+
+    const groupMembersS = groupMembers.split(',');
+    const groupMembersPublicKeys = groupMembersS.map(member => publicKeys.get(member));
+    //const keylist_array = inputPublicKeysRef.current.value.split("\\");
+    const keylist_array = groupMembersPublicKeys;
+    let keylist_registers = [];
+    for (let i = 0; i < keylist_array.length; i++){
+        keylist_registers.push(bigint_to_registers(121n,34,SignatureProcessing.parseSSHRSAPublicKey(keylist_array[i]).modulusBigInt));
     }
+    const zero_register = Array(34).fill("0");
+    for (let i = keylist_array.length; i < 1000; i++){
+        keylist_registers.push(zero_register);
+    }
+    const modulusLength = 512; // parseInt(inputModulusLengthRef.current.value);
+    const msg_register = bigint_to_registers(121n,34,SignatureProcessing.generatePKCS1BigInt(message, "kudosBot", "SHA-512", modulusLength));
+
+    const vkey = JSON.parse(await fs.promises.readFile("verification_key-rsa.json", 'utf8'));
+
+    //const publicSignals = JSON.parse(inputPublicRef.current.value);
+    //const proof = JSON.parse(inputProofRef.current.value);
+    //verify msg
+    console.log(message);
+    console.log(message.length);
+    console.log(msg_register);
+    console.log(keylist_registers);
+    console.log(publicInputs);
+    let res = true;
+    for (let i = 0; i < 34; i++){
+        if (publicInputs[i] !== msg_register[i]){
+            res = false;
+            break;
+        }
+    }
+    //verify keylist
+    if (res){
+        for (let j = 0; j < keylist_registers.length * 34; j++){
+            if (publicInputs[j+34] !== keylist_registers[Math.floor(j/34)][j%34]){
+                res = false;
+                break;
+            }
+        }
+    }
+    if (res){
+        console.log(proof);
+        console.log(publicInputs);
+        res = await snarkjs.groth16.verify(vkey, publicInputs, proof);
+    }
+
+    
     
     return {
-        passed: true,
+        passed: res,
         details: {
-            messageLength: messageBytes
+            test: "test"
         }
     };
 }
@@ -523,7 +597,7 @@ function shouldSendEmail(cliArgs) {
  */
 app.post('/cli/send', async (req, res) => {
     try {
-        const { message, to, subject } = req.body;
+        const { message, to, subject, groupMembers } = req.body;
         
         if (!message) {
             return res.status(400).json({ 
@@ -532,7 +606,7 @@ app.post('/cli/send', async (req, res) => {
         }
         
         // Run the test function with all CLI arguments
-        const testResult = shouldSendEmail(req.body);
+        const testResult = await shouldSendEmail(req.body);
         
         if (!testResult.passed) {
             return res.json({
@@ -555,11 +629,11 @@ app.post('/cli/send', async (req, res) => {
         }
         
         // Default recipient and subject if not provided
-        const recipient = to || 'test@example.com';
-        const emailSubject = subject || 'CLI Message';
+        const recipient = to || 'sansome-talk@0xparc.org';
+        const emailSubject = subject || 'double-blind message';
         
         const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-        const encodedMessage = createEmailMessage(recipient, emailSubject, message);
+        const encodedMessage = createEmailMessage(recipient, emailSubject, message + "\n==========\n"+groupMembers);
         
         const result = await gmail.users.messages.send({
             userId: 'me',
