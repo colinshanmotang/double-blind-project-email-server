@@ -534,7 +534,7 @@ async function shouldSendEmail(cliArgs) {
     const publicKeys = await readPublicKeys();
     //console.log("Public keys:", publicKeys);
 
-    const groupMembersS = groupMembers.split(',');
+    const groupMembersS = groupMembers.split(',').sort();
     const groupMembersPublicKeys = groupMembersS.map(member => publicKeys.get(member));
     //const keylist_array = inputPublicKeysRef.current.value.split("\\");
     const keylist_array = groupMembersPublicKeys;
@@ -633,7 +633,7 @@ app.post('/cli/send', async (req, res) => {
         const emailSubject = subject || 'double-blind message';
         
         const gmail = google.gmail({ version: 'v1', auth: oauth2Client });
-        const encodedMessage = createEmailMessage(recipient, emailSubject, message + "\n==========\n"+groupMembers);
+        const encodedMessage = createEmailMessage(recipient, emailSubject, message + "\n==========\n"+groupMembers.split(',').sort());
         
         const result = await gmail.users.messages.send({
             userId: 'me',

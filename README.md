@@ -64,6 +64,10 @@ The client supports the following options:
 
 You will need to download the file `client/public/rsa_0001.zkey` from [here](https://drive.google.com/file/d/1TLXSpmupKv_3dLAzZM2kYWmi7ZeRq5w8/view?usp=sharing) since it is 700 MB and thus too large for github.
 
-Then you can just run the CLI client using the instructions above.
+You will also need to make sure your username/public key are in `client/public/public-key-directory.txt`.
+
+Then you can just run the CLI client using the instructions above. Try running `npm start -- -f ~/.ssh/id_rsa -m "hello world" -g gubsheep,ndwrobotics,colinshanmotang,[insert username here]`
 
 Currently the server lives on my laptop, so the functionality will only work when my laptop is running :P
+
+TODO: Replace `localhost:3000` with something that actually would work on a machine that is not the server
