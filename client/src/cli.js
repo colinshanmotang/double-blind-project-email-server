@@ -170,7 +170,9 @@ async function main(options) {
     const publicKeys = readPublicKeys();
     //console.log("Public keys:", publicKeys);
 
-    const groupMembers = options.groupMembers.split(',');
+    // IMPORTANT sort the group members to ensure that the ordering
+    // doesn't reveal any information
+    const groupMembers = options.groupMembers.split(',').sort();
     const groupMembersPublicKeys = groupMembers.map(member => {
         
         const result = publicKeys.get(member);
