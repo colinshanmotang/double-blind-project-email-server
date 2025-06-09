@@ -71,7 +71,7 @@ async function loadSavedToken() {
  * Save the token to disk for later program executions.
  */
 async function saveToken(tokens) {
-    await fs.writeFile(TOKEN_PATH, JSON.stringify(tokens));
+    await fs.promises.writeFile(TOKEN_PATH, JSON.stringify(tokens));
     console.log('Token stored to', TOKEN_PATH);
 }
 
@@ -84,12 +84,14 @@ app.get('/auth', async (req, res) => {
         
         // Check if we already have a token
         const hasToken = await loadSavedToken();
+        /*
         if (hasToken) {
             return res.json({ 
                 message: 'Already authenticated!',
                 redirect: '/test-gmail'
             });
         }
+            */
         
         // Generate the url that will be used for the consent dialog
         const authorizeUrl = oauth2Client.generateAuthUrl({
