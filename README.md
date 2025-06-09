@@ -59,3 +59,11 @@ The client supports the following options:
 - `-f, --file <filename>` - Specify a filename
 - `-m, --message <message>` - Specify a message string
 - `-s, --server <url>` - Specify server URL (default: http://localhost:3000) 
+
+## Required files
+
+You will need to download the file `client/public/rsa_0001.zkey` since it is 700 MB and thus too large for github.
+
+Then you can just run the CLI client using the instructions above.
+
+Currently the server lives on my laptop, so the functionality will only work when my laptop is running :P
