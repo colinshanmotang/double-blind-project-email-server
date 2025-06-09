@@ -71,3 +71,7 @@ Then you can just run the CLI client using the instructions above. Try running `
 Currently the server lives on my laptop, so the functionality will only work when my laptop is running :P
 
 TODO: Replace `localhost:3000` with something that actually would work on a machine that is not the server
+
+## Final note
+
+This is intended as a kudos board, not a general-purpose anonymous messaging board, since gubsheep tells me that there have been problems with the latter in the past
