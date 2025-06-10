@@ -51,6 +51,24 @@ async function createOAuth2Client() {
         redirect_uris[0] || 'http://localhost:3000/auth/callback'
     );
     
+    // Set up automatic token refresh
+    oauth2Client.on('tokens', async (tokens) => {
+        try {
+            // Only save if we got new tokens
+            if (tokens.access_token) {
+                // Merge with existing credentials to preserve refresh_token
+                const existingCredentials = oauth2Client.credentials || {};
+                const updatedTokens = { ...existingCredentials, ...tokens };
+                
+                oauth2Client.setCredentials(updatedTokens);
+                await saveToken(updatedTokens);
+                console.log('Tokens automatically refreshed and saved');
+            }
+        } catch (error) {
+            console.error('Error saving refreshed tokens:', error);
+        }
+    });
+    
     return oauth2Client;
 }
 
@@ -82,16 +100,18 @@ app.get('/auth', async (req, res) => {
     try {
         await createOAuth2Client();
         
-        // Check if we already have a token
+        // Check if we already have a valid token
         const hasToken = await loadSavedToken();
-        /*
-        if (hasToken) {
-            return res.json({ 
-                message: 'Already authenticated!',
-                redirect: '/test-gmail'
-            });
+        if (hasToken && oauth2Client.credentials.access_token) {
+            // Check if we have a refresh token for long-term access
+            if (oauth2Client.credentials.refresh_token) {
+                return res.json({ 
+                    message: 'Already authenticated!',
+                    redirect: '/test-gmail',
+                    hasRefreshToken: true
+                });
+            }
         }
-            */
         
         // Generate the url that will be used for the consent dialog
         const authorizeUrl = oauth2Client.generateAuthUrl({
@@ -466,8 +486,8 @@ app.post('/gmail/send-template', async (req, res) => {
 });
 app.get('/auth/status', async (req, res) => {
     try {
-        const hasCredentialsFile = await fs.access(CREDENTIALS_PATH).then(() => true).catch(() => false);
-        const hasTokenFile = await fs.access(TOKEN_PATH).then(() => true).catch(() => false);
+        const hasCredentialsFile = await fs.promises.access(CREDENTIALS_PATH).then(() => true).catch(() => false);
+        const hasTokenFile = await fs.promises.access(TOKEN_PATH).then(() => true).catch(() => false);
         
         res.json({
             hasCredentialsFile,
